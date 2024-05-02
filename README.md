@@ -24,4 +24,10 @@ This project is focused on the sales data analysis of a Toy Manufacturer.
 
 The final Looker Report is at: https://lookerstudio.google.com/reporting/67fd6a27-fe32-4730-af21-da0a9ebdc080/page/7pqwD
 
+The first report shows the analysis of Sales per region, Incomes per month and Sold Units per Product Line
+
 ![Dashboard analysis](Dashboard.jpeg)
+
+The second report shows the customer's purchase behavior across time
+
+![Dashboard analysis](Dashboard2.jpeg)

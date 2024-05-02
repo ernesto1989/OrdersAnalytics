@@ -1,0 +1,93 @@
+Sales Data - 
+
+URL: https://www.kaggle.com/datasets/kyanyoga/sample-sales-data?resource=download
+
+El set de datos cuenta con información de ventas (aparentemente de jugetes) para retailers.
+
+El archivo cuenta con la siguiente información:
+
+	1. Order number: Número de la orden de compra
+	2. Cantidad, precio unitario, y subtotal por producto.
+	3. Fecha de la compra
+	4. Orderline - Parece ser el orden de producto en la compra.
+	5. La fecha de la compra y su estatus. La compra viene desglosada por Mes y Año, Tambien se identifica el Quarter ID
+	6. MRSP: Manufacturer's Sugested Retail Price - Precio sugerido de venta
+	7. El producto y su categoría.
+	8. El cliente con su información:
+		- Dirección
+		- País
+		- Territorio
+		-Contacto
+		- Detalle del tamaño del retailer
+
+
+Paso #01 - Tratamiento de los datos
+
+NOTA: Debido al separador de comas, el campo Sales se interpretó mal, así que utilicé la función FORMAT(o.QUANTITYORDERED * o.PRICEEACH,2,'es-MX')
+para corregir el error. Este error de interpretación se debió al uso de . para separar miles y , para separar decimales.
+
+Primero, como el archivo CSV viene en formato de visualizador, lo pasé a formato de ER buscando minimizar el volumen de datos. Para esto,
+despues de haber mappeado los datos en cuanto a significado, cargué directamente el CSV a una tabla "Origen" en DBeaver.
+
+Empecé creando los siguientes catálogos:
+	a) Estatus
+	b) Lineas de producto
+	c) Producto
+
+	Al llegar al catálogo de producto, me percaté que el precio unitario por producto es distinto en cada venta, incluso, no parece estar asociado a:
+		1) Cantidad ordenada del producto
+		2) Region donde está el cliente.
+
+
+	En este caso, hay varias opciones:
+		1) Directamente en la venta tener el precio unitario
+		2) Definir un precio unitario en base a los datos
+		3) Tener un precio por cliente_producto <- ESTA Opción parece no viable porque para un mismo cliente se tiene precio de venta diferentes.
+
+		CREO QUE PUEDE SER VALIOSO TENER: 
+			- Un precio de venta por catálogo * SE SELECCIONÓ el precio de venta más alto
+			- Un precio de venta en la venta 
+
+			Ver las diferencias
+
+NOTA: Hay que meterle tratamiento al tema de territorio y pais***
+
+
+
+
+PASO #2 - CARGA DE DATOS en Looker Studio
+
+Se creó una fuente de datos para obtener de la BD en la nube
+
+URL del reporte: https://lookerstudio.google.com/reporting/67fd6a27-fe32-4730-af21-da0a9ebdc080/page/7pqwD/edit
+
+CREATE VIEW detail_order_view as
+select 
+	o.`order` as no_orden,
+	o.order_date  as fecha,
+	c.name as cliente,
+	c.country as pais,
+	case
+		WHEN c.terrytory = 'NA' then 'Norteamérica' 
+		WHEN c.terrytory = 'EMEA' then 'Europa'
+		WHEN c.terrytory = 'JAPAN' then 'Asia'
+		WHEN c.terrytory = 'APAC' then 'Oceania' 
+		else 'OTRO'
+	end as region,
+	s.status as status,
+	do.product_id as product,
+	pl.product_line as linea_producto,
+	do.quantity as cantidad_producto,
+	do.sell_price as precio_venta_pu,
+	p.unit_price as precio_catalogo,
+	p.mrsp as precio_sugerido,
+	do.quantity * do.sell_price as precio_venta_cte,
+	do.quantity * p.unit_price as precio_pu,
+	do.quantity * p.mrsp as proyeccion_vta_cte
+from `order` o 
+join status s on s.status_id = o.status
+join customer c on c.customer_id = o.customer 
+join detail_order do ON do.`order` = o.`order` 
+join product p on p.product_id = do.product_id
+join product_line pl on pl.pl_id = p.pl_id
+
