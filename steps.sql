@@ -1,7 +1,24 @@
-#paso 1 - cargar datos en tabla "original"
+##########################################################################################################
+# Steps.sql file defines the required steps in order to transform the data into a well-defined database.
+# 
+# This file takes into consideration that you've already loaded the sales_data_sample.csv file into a 
+# database table.
+# 
+# The steps create the corresponding tables and insert data from the file into the corresponding table.
+#
+# After this, you can query this info in order to visualize it on Looker Studio.
+#
+# Ernesto Cantú
+# 05-02-2024
+#########################################################################################################
+
+
+#step 1 - make sure the file is loaded
 select * from `sales_data_sample.csv` sdsc;
 
-#paso 2 - crear tabla de estatus y obtener los distintos estatus
+#####################################################################################################
+
+#step 2 - getting the posible status from the orders.
 CREATE TABLE `status` (
   `status_id` int NOT NULL AUTO_INCREMENT,
   `status` varchar(15) DEFAULT NULL,
@@ -9,10 +26,11 @@ CREATE TABLE `status` (
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 insert into status (status)
-select distinct status from `sales_data_sample.csv` 
+select distinct status from `sales_data_sample.csv`;
 
-#paso 3 - generar catálogo de lineas de producto
+#####################################################################################################
 
+#step 3 - product line catalog.
 CREATE TABLE `product_line` (
   `pl_id` int NOT NULL AUTO_INCREMENT,
   `product_line` varchar(20) DEFAULT NULL,
@@ -22,9 +40,9 @@ CREATE TABLE `product_line` (
 insert into product_line  (product_line)
 select distinct PRODUCTLINE  from `sales_data_sample.csv` 
 
+#####################################################################################################
 
-
-#paso 4 - generar catálogo de productos
+#step 4 - product catalog
 
 CREATE TABLE sales_data_example.product (
 	id int auto_increment NOT NULL,
@@ -42,19 +60,26 @@ COLLATE=utf8mb4_0900_ai_ci;
 
 #Al llegar al catálogo de producto, me percaté que el precio unitario por producto es distinto en cada venta
 #Se decidió tener un precio unitario por catálogo (buscando el precio máximo) y tener un precio de venta en la venta final
+
+#As mencioned on the main document of the project, as I was analyzing the product's unit prices, I found out that there were different
+#prices for the same product. I could not tell that they were applied to a specific customer or other condition.
+#So, as part of my project analysis, I decided to define a catalog's unit price for each product and a "sale unit price" for the product.
+#This gave me the possibility to analyze both options in order to identify the difference between the highest price and the sales price.
 INSERT INTO sales_data_example.product
 (product_id, pl_id, unit_price, mrsp)
 select 
 	o.PRODUCTCODE,
 	pl.pl_id,
-	MAX(FORMAT(o.PRICEEACH,2,'es-MX')),
+	MAX(FORMAT(o.PRICEEACH,2,'es-MX')), #took the highest price
 	o.MSRP
 from `sales_data_sample.csv`  o
 join product_line pl on pl.product_line = o.PRODUCTLINE 
 group by o.PRODUCTCODE, pl.pl_id , o.PRODUCTLINE,o.MSRP
 
 
-#paso 5 - genero el catálogo de clientes
+#####################################################################################################
+
+#step 5 - customers catalog
 CREATE TABLE sales_data_example.customer (
 	customer_id INT auto_increment NOT NULL,
 	name varchar(100) NOT NULL,
@@ -100,8 +125,9 @@ group by CUSTOMERNAME,
 	TERRITORY,
 	concat(CONTACTFIRSTNAME,' ',CONTACTLASTNAME) 
 
+#####################################################################################################
 
-#paso 6 - creo la tabla de ordenes de compra
+#step 6 - orders catalog
 CREATE TABLE `order` (
   `order` varchar(30) NOT NULL,
   `order_date` date DEFAULT NULL,
@@ -118,7 +144,9 @@ CREATE TABLE `order` (
   CONSTRAINT `order_FK_1` FOREIGN KEY (`customer`) REFERENCES `customer` (`customer_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-#nota: utilicé el insert ignore porque me está fallando el truncate de la fecha
+#
+# As part of the treatment process, I had to use insert ignore (a particular mysql instruction) to manipulate the order dates. They were truncating.
+#
 insert IGNORE  INTO sales_data_example.`order`
 (`order`, order_date, quarter, month_id, `year`, customer, status, deal_size)
 select 
@@ -142,8 +170,9 @@ group by o.ORDERNUMBER ,
 	s.status_id,
 	o.DEALSIZE 
 
+#####################################################################################################
 
-	#paso 7 - creo el detalle de la venta
+#step 7 - order detail, which contains the products per order, with the units quantity and the final price
 CREATE TABLE sales_data_example.detail_order (
 	`order` varchar(30) NOT NULL,
 	product_id varchar(30) NOT NULL,
@@ -165,6 +194,8 @@ select
 	o.ORDERNUMBER,
 	o.PRODUCTCODE,
 	o.QUANTITYORDERED,
-	o.PRICEEACH,
+	o.PRICEEACH, ## as mentioned before, I took the original's data sell price as the final sell price of a product, in order to compare it to the highest sale.
 	o.ORDERLINENUMBER 
 from `sales_data_sample.csv` o
+
+#####################################################################################################
