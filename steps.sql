@@ -1,5 +1,5 @@
 ##########################################################################################################
-# Steps.sql file defines the required steps in order to transform the data into a well-defined database.
+# Steps.sql file defines the required steps in order to transform and clean the original data into a well-defined database.
 # 
 # This file takes into consideration that you've already loaded the sales_data_sample.csv file into a 
 # database table.
@@ -58,8 +58,6 @@ ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_0900_ai_ci;
 
-#Al llegar al catálogo de producto, me percaté que el precio unitario por producto es distinto en cada venta
-#Se decidió tener un precio unitario por catálogo (buscando el precio máximo) y tener un precio de venta en la venta final
 
 #As mencioned on the main document of the project, as I was analyzing the product's unit prices, I found out that there were different
 #prices for the same product. I could not tell that they were applied to a specific customer or other condition.
@@ -173,6 +171,8 @@ group by o.ORDERNUMBER ,
 #####################################################################################################
 
 #step 7 - order detail, which contains the products per order, with the units quantity and the final price
+#Also, as mentioned before, I ignored the original "SALES" column form the file as I identified that almost 46% 
+#of the records did not were correct.
 CREATE TABLE sales_data_example.detail_order (
 	`order` varchar(30) NOT NULL,
 	product_id varchar(30) NOT NULL,
